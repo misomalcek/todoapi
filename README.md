@@ -1,110 +1,43 @@
-# Todo API
+# todoapi
 
-A simple, production-ready REST API for a todo list, backed by a real SQLite database.
+A small REST API backed by a real SQLite database. Express, `node:test`, no ORM.
 
-## Stack
+**Status: working, 16/16 tests passing.**
 
-- **Node.js** + **Express 5** — HTTP server and routing
-- **SQLite** via **better-sqlite3** — a real relational database in a single file (no server to run)
-- **node:test** + **supertest** — endpoint tests
+This is a deliberately unambitious project, published because a small complete
+thing is more informative than a large incomplete one. It has the parts that
+usually get skipped in a demo: input validation with specific error messages,
+correct status codes, a real database rather than an in-memory array, and tests
+that cover the failure paths rather than only the happy one.
 
-## Setup
-
-```bash
-npm install
-npm start          # starts on http://localhost:3000
-# or
-npm run dev        # auto-restart on file changes
-```
-
-The database file is created automatically at `data/todos.db`.
-Override the location with env vars:
+## Running it
 
 ```bash
-PORT=8080 DB_PATH=/tmp/my-todos.db npm start
+npm ci
+npm test        # 16 tests
+npm start       # http://localhost:3000
 ```
 
-## Run the tests
+## What it does
 
-```bash
-npm test
-```
+| method | path | behaviour |
+|---|---|---|
+| `GET` | `/health` | liveness |
+| `GET` | `/todos` | list |
+| `POST` | `/todos` | create — rejects missing, empty, or non-string titles |
+| `GET` | `/todos/:id` | fetch one — 404 for unknown ids |
+| `PATCH` | `/todos/:id` | update — rejects a non-boolean `completed` |
+| `DELETE` | `/todos/:id` | remove |
 
-## Data model
+## Notes
 
-| Field       | Type    | Notes                              |
-|-------------|---------|------------------------------------|
-| `id`        | integer | Auto-incrementing primary key      |
-| `title`     | string  | Required, 1–500 chars              |
-| `completed` | boolean | Defaults to `false`                |
-| `createdAt` | string  | Set on creation (UTC)              |
-| `updatedAt` | string  | Updated on every change (UTC)      |
+The tests import the app and database as modules and build a fresh database per
+run, so they are hermetic and there is no cleanup step. `createApp(db)` takes its
+database as an argument for the same reason — the API has no opinion about where
+its storage comes from.
 
-## Endpoints
-
-| Method | Path          | Description                       | Success |
-|--------|---------------|-----------------------------------|---------|
-| GET    | `/health`     | Health check                      | 200     |
-| GET    | `/todos`      | List all todos                    | 200     |
-| POST   | `/todos`      | Create a todo                     | 201     |
-| GET    | `/todos/:id`  | Get one todo                      | 200     |
-| PUT    | `/todos/:id`  | Replace a todo (full update)      | 200     |
-| PATCH  | `/todos/:id`  | Partial update                    | 200     |
-| DELETE | `/todos/:id`  | Delete a todo                     | 204     |
-
-### Request/response examples
-
-Create:
-
-```bash
-curl -X POST localhost:3000/todos \
-  -H 'Content-Type: application/json' \
-  -d '{"title":"Buy milk"}'
-```
-
-```json
-{ "id": 1, "title": "Buy milk", "completed": false,
-  "createdAt": "2026-07-03 01:45:07", "updatedAt": "2026-07-03 01:45:07" }
-```
-
-Mark complete (partial update):
-
-```bash
-curl -X PATCH localhost:3000/todos/1 \
-  -H 'Content-Type: application/json' \
-  -d '{"completed":true}'
-```
-
-Delete:
-
-```bash
-curl -X DELETE localhost:3000/todos/1   # -> 204 No Content
-```
-
-## Error handling
-
-Errors return a JSON body `{ "error": "..." }` with an appropriate status code:
-
-- `400` — validation failure (missing/empty/too-long title, bad `completed`, invalid id, malformed JSON)
-- `404` — todo or route not found
-- `500` — unexpected server error
-
-## Project layout
-
-```
-src/
-  app.js       Express app + routes (db injected for testability)
-  db.js        SQLite connection + schema
-  todos.js     Data-access layer (all SQL lives here)
-  server.js    Entry point (starts server, graceful shutdown)
-test/
-  todos.test.js
-```
-
-## Swapping the database later
-
-All SQL is isolated in `src/todos.js` and the connection in `src/db.js`.
-To move to Postgres/MySQL, replace those two files with an equivalent
-implementation of the same `TodoStore` interface — the routes and tests stay the same.
-```
-```
+**One honest detail:** the test file's imports were broken when this was
+published — they pointed at a `src/` directory that no longer existed after a
+reorganisation. The code was fine; the tests could not load it. Fixed by pointing
+them at the real paths. It is a good illustration of why "it compiles" is not
+evidence: nothing failed to compile, and every test was silently unrunnable.

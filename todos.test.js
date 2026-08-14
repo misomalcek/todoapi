@@ -3,8 +3,8 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const request = require('supertest');
-const { createApp } = require('../src/app');
-const { createDb } = require('../src/db');
+const { createApp } = require('./app');
+const { createDb } = require('./db');
 
 /** Fresh in-memory app per test for full isolation. */
 function makeApp() {
